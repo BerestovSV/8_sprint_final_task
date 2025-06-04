@@ -49,22 +49,21 @@ func (s ParcelStore) Get(number int) (Parcel, error) {
 		&p.Status,
 	)
 
-	switch {
-	case err == nil:
-		return p, nil
-	case errors.Is(err, sql.ErrNoRows):
+	if errors.Is(err, sql.ErrNoRows) {
 		return Parcel{}, fmt.Errorf("no row founded: %w", err)
-	default:
+	}
+
+	if err != nil {
 		return Parcel{}, fmt.Errorf("bad query: %w", err)
 	}
 
+	return p, nil
 }
 
 func (s ParcelStore) GetByClient(client int) ([]Parcel, error) {
 
 	rows, err := s.db.Query("SELECT number, client, address, created_at, status FROM parcel WHERE client = :client",
 		sql.Named("client", client))
-
 	if err != nil {
 		return nil, fmt.Errorf("bad query: %w", err)
 	}
@@ -75,21 +74,24 @@ func (s ParcelStore) GetByClient(client int) ([]Parcel, error) {
 
 	for rows.Next() {
 
-		parsel := Parcel{}
+		parcel := Parcel{}
 
-		err = rows.Scan(
-			&parsel.Number,
-			&parsel.Client,
-			&parsel.Address,
-			&parsel.CreatedAt,
-			&parsel.Status,
+		err := rows.Scan(
+			&parcel.Number,
+			&parcel.Client,
+			&parcel.Address,
+			&parcel.CreatedAt,
+			&parcel.Status,
 		)
-
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 
-		res = append(res, parsel)
+		res = append(res, parcel)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
 	}
 
 	return res, nil
@@ -110,24 +112,10 @@ func (s ParcelStore) SetStatus(number int, status string) error {
 
 func (s ParcelStore) SetAddress(number int, address string) error {
 
-	var currentStatus string
-
-	res := s.db.QueryRow("SELECT status FROM parcel WHERE number = :number",
-		sql.Named("number", number))
-
-	err := res.Scan(&currentStatus)
-
-	if err != nil {
-		return fmt.Errorf("failed to fetch status to parcel %d: %w", number, err)
-	}
-
-	if currentStatus != ParcelStatusRegistered {
-		return fmt.Errorf("status mismatch for parcel %d: got %s, want %s", number, currentStatus, ParcelStatusRegistered)
-	}
-
-	_, err = s.db.Exec("UPDATE parcel SET address = :address WHERE number = :number",
+	_, err := s.db.Exec("UPDATE parcel SET address = :address WHERE number = :number AND status = :status",
 		sql.Named("address", address),
-		sql.Named("number", number))
+		sql.Named("number", number),
+		sql.Named("status", ParcelStatusRegistered))
 
 	if err != nil {
 		return fmt.Errorf("failed to update address for parcel %d: %w", number, err)
@@ -138,21 +126,9 @@ func (s ParcelStore) SetAddress(number int, address string) error {
 
 func (s ParcelStore) Delete(number int) error {
 
-	var currentStatus string
-
-	res := s.db.QueryRow("SELECT status FROM parcel WHERE number = :number",
-		sql.Named("number", number))
-
-	err := res.Scan(&currentStatus)
-	if err != nil {
-		return fmt.Errorf("failed to fetch status to parcel %d: %w", number, err)
-	}
-
-	if currentStatus != ParcelStatusRegistered {
-		return fmt.Errorf("status mismatch for parcel %d: got %s, want %s", number, currentStatus, ParcelStatusRegistered)
-	}
-
-	_, err = s.db.Exec("DELETE FROM parcel WHERE number = :number", sql.Named("number", number))
+	_, err := s.db.Exec("DELETE FROM parcel WHERE number = :number AND status = :status",
+		sql.Named("number", number),
+		sql.Named("status", ParcelStatusRegistered))
 	if err != nil {
 		return fmt.Errorf("failed to delete row number %d: %w", number, err)
 	}

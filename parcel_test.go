@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,162 +31,92 @@ func getTestParcel() Parcel {
 
 // TestAddGetDelete проверяет добавление, получение и удаление посылки
 func TestAddGetDelete(t *testing.T) {
-	// prepare
-	db, err := sql.Open("sqlite", "tracker.db") // настройте подключение к БД
 
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
+	db, err := sql.Open("sqlite", "tracker.db")
+	require.NoErrorf(t, err, "failed to open database: %v")
 
 	defer db.Close()
 
 	store := NewParcelStore(db)
 	parcel := getTestParcel()
 
-	// add
-	// добавьте новую посылку в БД, убедитесь в отсутствии ошибки и наличии идентификатора
 	id, err := store.Add(parcel)
-
-	if err != nil {
-		t.Fatalf("failed to add parcel: %v", err)
-	}
-
-	if id == 0 {
-		t.Fatal("expected non-zero ID after insert")
-	}
-
-	// get
-	// получите только что добавленную посылку, убедитесь в отсутствии ошибки
-	// проверьте, что значения всех полей в полученном объекте совпадают со значениями полей в переменной parcel
+	require.NoErrorf(t, err, "failed to add parcel: %v")
+	require.NotZero(t, id, "expected non-zero ID after insert")
 
 	saved, err := store.Get(id)
+	require.NoErrorf(t, err, "failed to get parcel: %v")
 
-	if err != nil {
-		t.Fatalf("failed to get parcel: %v", err)
-	}
-
-	require.Equal(t, parcel.Client, saved.Client)
-	require.Equal(t, parcel.Status, saved.Status)
-	require.Equal(t, parcel.Address, saved.Address)
-	require.Equal(t, parcel.CreatedAt, saved.CreatedAt)
-
-	// delete
-	// удалите добавленную посылку, убедитесь в отсутствии ошибки
-	// проверьте, что посылку больше нельзя получить из БД
+	assert.Equal(t, parcel.Number, saved.Number)
+	assert.Equal(t, parcel.Client, saved.Client)
+	assert.Equal(t, parcel.Status, saved.Status)
+	assert.Equal(t, parcel.Address, saved.Address)
+	assert.Equal(t, parcel.CreatedAt, saved.CreatedAt)
 
 	err = store.Delete(id)
-
-	if err != nil {
-		t.Fatalf("failed to delete parcel: %v", err)
-	}
+	assert.NoErrorf(t, err, "failed to delete parcel: %v")
 
 	_, err = store.Get(id)
-	if err == nil {
-		t.Fatal("expected error when getting deleted parcel, got nil")
-	}
+	require.Error(t, err, "expected error when getting deleted parcel, got nil")
 }
 
 // TestSetAddress проверяет обновление адреса
 func TestSetAddress(t *testing.T) {
-	// prepare
-	db, err := sql.Open("sqlite", "tracker.db") // настройте подключение к БД
 
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
+	db, err := sql.Open("sqlite", "tracker.db")
+	require.NoErrorf(t, err, "failed to open database: %v")
 
 	defer db.Close()
 
 	store := NewParcelStore(db)
 	parcel := getTestParcel()
 
-	// add
-	// добавьте новую посылку в БД, убедитесь в отсутствии ошибки и наличии идентификатора
 	id, err := store.Add(parcel)
+	require.NoErrorf(t, err, "failed to add parcel: %v")
+	require.NotZero(t, id, "expected non-zero ID after insert")
 
-	if err != nil {
-		t.Fatalf("failed to add parcel: %v", err)
-	}
-
-	if id == 0 {
-		t.Fatal("expected non-zero ID after insert")
-	}
-
-	// set address
-	// обновите адрес, убедитесь в отсутствии ошибки
 	newAddress := "new test address"
 
 	err = store.SetAddress(id, newAddress)
+	assert.NoErrorf(t, err, "failed to set new address: %v")
 
-	if err != nil {
-		t.Fatalf("failed to set new address: %v", err)
-	}
-
-	// check
-	// получите добавленную посылку и убедитесь, что адрес обновился
 	updated, err := store.Get(id)
+	require.NoErrorf(t, err, "failed to get parcel: %v")
 
-	if err != nil {
-		t.Fatalf("failed to get parcel: %v", err)
-	}
-
-	require.Equal(t, newAddress, updated.Address)
+	assert.Equal(t, newAddress, updated.Address)
 }
 
 // TestSetStatus проверяет обновление статуса
 func TestSetStatus(t *testing.T) {
-	// prepare
-	db, err := sql.Open("sqlite", "tracker.db") // настройте подключение к БД
 
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
+	db, err := sql.Open("sqlite", "tracker.db")
+	require.NoErrorf(t, err, "failed to open database: %v")
 
 	defer db.Close()
 
 	store := NewParcelStore(db)
 	parcel := getTestParcel()
 
-	// add
-	// добавьте новую посылку в БД, убедитесь в отсутствии ошибки и наличии идентификатора
 	id, err := store.Add(parcel)
+	require.NoErrorf(t, err, "failed to add parcel: %v")
+	require.NotZero(t, id, "expected non-zero ID after insert")
 
-	if err != nil {
-		t.Fatalf("failed to add parcel: %v", err)
-	}
-
-	if id == 0 {
-		t.Fatal("expected non-zero ID after insert")
-	}
-
-	// set status
 	newStatus := ParcelStatusSent
 
 	err = store.SetStatus(id, ParcelStatusSent)
+	require.NoErrorf(t, err, "failed to update status: %v")
 
-	if err != nil {
-		t.Fatalf("failed to update status: %v", err)
-	}
-
-	// check
-	// получите добавленную посылку и убедитесь, что статус обновился
 	updated, err := store.Get(id)
+	require.NoErrorf(t, err, "failed to get parcel: %v")
 
-	if err != nil {
-		t.Fatalf("failed to get parcel: %v", err)
-	}
-
-	require.Equal(t, newStatus, updated.Status)
+	assert.Equal(t, newStatus, updated.Status)
 }
 
 // TestGetByClient проверяет получение посылок по идентификатору клиента
 func TestGetByClient(t *testing.T) {
-	// prepare
-	db, err := sql.Open("sqlite", "tracker.db") // настройте подключение к БД
 
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
+	db, err := sql.Open("sqlite", "tracker.db")
+	require.NoErrorf(t, err, "failed to open database: %v")
 
 	defer db.Close()
 
@@ -196,53 +127,36 @@ func TestGetByClient(t *testing.T) {
 		getTestParcel(),
 		getTestParcel(),
 	}
+
 	parcelMap := map[int]Parcel{}
 
-	// задаём всем посылкам один и тот же идентификатор клиента
 	client := randRange.Intn(10_000_000)
 	parcels[0].Client = client
 	parcels[1].Client = client
 	parcels[2].Client = client
 
-	// add
 	for i := 0; i < len(parcels); i++ {
 		id, err := store.Add(parcels[i])
-		if err != nil {
-			t.Fatalf("failed to add new parcel: %v", err)
-		}
-		// обновляем идентификатор добавленной у посылки
+		assert.NoErrorf(t, err, "failed to add new parcel: %v")
+
 		parcels[i].Number = id
 
-		// сохраняем добавленную посылку в структуру map, чтобы её можно было легко достать по идентификатору посылки
 		parcelMap[id] = parcels[i]
 	}
 
-	// get by client
-	storedParcels, err := store.GetByClient(client) // получите список посылок по идентификатору клиента, сохранённого в переменной client
-	// убедитесь в отсутствии ошибки
-	if err != nil {
-		t.Fatalf("failed to get parcel for client %d: %v", client, err)
-	}
-	// убедитесь, что количество полученных посылок совпадает с количеством добавленных
-	require.Equal(t, len(storedParcels), len(parcels))
+	storedParcels, err := store.GetByClient(client)
+	require.NoErrorf(t, err, "failed to get parcel for client %d: %v", client)
 
-	// check
+	assert.Equal(t, len(storedParcels), len(parcels))
+
 	for _, parcel := range storedParcels {
-		// в parcelMap лежат добавленные посылки, ключ - идентификатор посылки, значение - сама посылка
-		// убедитесь, что все посылки из storedParcels есть в parcelMap
-		// убедитесь, что значения полей полученных посылок заполнены верно
-
-		// Проверяем, что parcel с таким number есть в карте
 		expected, ok := parcelMap[parcel.Number]
+		require.True(t, ok, "unexpected parcel with number %d found in storedParcels", parcel.Number)
 
-		if !ok {
-			t.Errorf("unexpected parcel with number %d found in storedParcels", parcel.Number)
-			continue
-		}
-
-		require.Equal(t, expected.Client, parcel.Client)
-		require.Equal(t, expected.Status, parcel.Status)
-		require.Equal(t, expected.Address, parcel.Address)
-		require.Equal(t, expected.CreatedAt, parcel.CreatedAt)
+		assert.Equal(t, expected.Number, parcel.Number)
+		assert.Equal(t, expected.Client, parcel.Client)
+		assert.Equal(t, expected.Status, parcel.Status)
+		assert.Equal(t, expected.Address, parcel.Address)
+		assert.Equal(t, expected.CreatedAt, parcel.CreatedAt)
 	}
 }
