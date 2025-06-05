@@ -147,16 +147,20 @@ func TestGetByClient(t *testing.T) {
 	storedParcels, err := store.GetByClient(client)
 	require.NoErrorf(t, err, "failed to get parcel for client %d: %v", client)
 
-	assert.Equal(t, len(storedParcels), len(parcels))
+	// removed assert.Equal(t, len(storedParcels), len(parcels))
+	assert.Len(t, storedParcels, len(parcels)) // add
 
 	for _, parcel := range storedParcels {
 		expected, ok := parcelMap[parcel.Number]
-		require.True(t, ok, "unexpected parcel with number %d found in storedParcels", parcel.Number)
+		assert.True(t, ok, "unexpected parcel with number %d found in storedParcels", parcel.Number)
 
-		assert.Equal(t, expected.Number, parcel.Number)
-		assert.Equal(t, expected.Client, parcel.Client)
-		assert.Equal(t, expected.Status, parcel.Status)
-		assert.Equal(t, expected.Address, parcel.Address)
-		assert.Equal(t, expected.CreatedAt, parcel.CreatedAt)
+		// removed assert.Equal(t, expected.Number, parcel.Number)
+		// removed assert.Equal(t, expected.Client, parcel.Client)
+		// removed assert.Equal(t, expected.Status, parcel.Status)
+		// removed assert.Equal(t, expected.Address, parcel.Address)
+		// removed assert.Equal(t, expected.CreatedAt, parcel.CreatedAt)
+
+		assert.Equal(t, expected, parcel) // add
+
 	}
 }
